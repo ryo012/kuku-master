@@ -650,6 +650,8 @@
 
             <div class="action-btns">
                 <button class="action-btn" onclick="location.reload()">もういちど</button>
+                <button class="action-btn" style="background: linear-gradient(135deg, #4caf50, #66bb6a);"
+                    onclick="exportData()">せんせいにおくる</button>
             </div>
         </div>
     </div>
@@ -1142,6 +1144,40 @@
                 document.getElementById('recommend-count').innerText = `ふくしゅう ${reviewCount}もん`;
             }
         });
+
+        // データエクスポート関数
+        function exportData() {
+            const now = new Date();
+            const timestamp = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const data = loadData();
+            const reviewData = loadReviewData();
+
+            // エクスポート用データを整形
+            const exportObj = {
+                exportDate: now.toISOString(),
+                studentName: prompt('なまえをいれてね（ローマじ）', 'student') || 'student',
+                totalQuestions: data.history.length,
+                correctCount: data.history.filter(h => h.correct).length,
+                wrongCount: data.history.filter(h => h.correct === false).length,
+                reviewQueueCount: reviewData.length,
+                history: data.history.slice(-100), // 最新100件のみ
+                reviewQueue: reviewData,
+                weaknessAnalysis: analyzeWeakness()
+            };
+
+            // JSONファイルとしてダウンロード
+            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kuku_${exportObj.studentName}_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('データをダウンロードしました！\nロイロノートでせんせいにおくってね。');
+        }
     </script>
 </body>
 
