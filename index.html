@@ -251,11 +251,17 @@
 
         .home-btn-mini {
             background: #fff;
-            color: #999;
-            padding: 8px 16px;
-            font-size: 1rem;
-            border: 2px solid #eee;
+            color: #555;
+            padding: 12px 24px;
+            /* サイズ拡大 */
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 2px solid #ddd;
+            border-radius: 30px;
+            /* 丸みを増やす */
             box-shadow: 0 4px 0 #eee;
+            min-width: 100px;
+            /* 押しやすい幅 */
         }
 
         .home-btn-mini:active {
@@ -266,9 +272,12 @@
             flex: 1;
             display: flex;
             justify-content: center;
-            align-items: center;
-            font-size: 4.5rem;
-            /* 少し縮小 */
+            align-items: flex-end;
+            /* 下寄せにしてテンキーに近づける */
+            padding-bottom: 10px;
+            /* わずかな隙間 */
+            font-size: 5rem;
+            /* 大きく戻す */
             font-weight: bold;
             color: var(--text-color);
             width: 100%;
