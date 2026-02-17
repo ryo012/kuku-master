@@ -677,6 +677,15 @@
 
         // 時間帯判定
         function getCurrentSession() {
+            // テストモード: URLパラメータで時間帯を指定可能
+            const urlParams = new URLSearchParams(window.location.search);
+            const testMode = urlParams.get('test');
+            if (testMode) {
+                if (['morning', 'noon', 'evening', 'free'].includes(testMode)) {
+                    return testMode;
+                }
+            }
+
             const now = new Date();
             const hour = now.getHours();
             const minute = now.getMinutes();
