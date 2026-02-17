@@ -648,10 +648,13 @@
                 </div>
             </div>
 
+
             <div class="action-btns">
                 <button class="action-btn" onclick="location.reload()">もういちど</button>
                 <button class="action-btn" style="background: linear-gradient(135deg, #4caf50, #66bb6a);"
                     onclick="exportData()">せんせいにおくる</button>
+                <button class="action-btn" style="background: linear-gradient(135deg, #2196f3, #42a5f5);"
+                    onclick="sendToSheets()">Sheetsにおくる</button>
             </div>
         </div>
     </div>
@@ -1177,6 +1180,44 @@
             URL.revokeObjectURL(url);
 
             alert('データをダウンロードしました！\nロイロノートでせんせいにおくってね。');
+        }
+
+        // Google Sheetsへのデータ送信
+        async function sendToSheets() {
+            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfKDqXB7-qX5HPWutvaGCe5cWi31LZbTQYT2omiGdDIKP27ZzMbmqiqTejQdhoPfxX/exec';
+
+            const now = new Date();
+            const data = loadData();
+            const reviewData = loadReviewData();
+
+            const studentName = prompt('なまえをいれてね（ローマじ）', 'student') || 'student';
+
+            // 送信用データを整形
+            const exportObj = {
+                exportDate: now.toISOString(),
+                studentName: studentName,
+                totalQuestions: data.history.length,
+                correctCount: data.history.filter(h => h.correct).length,
+                wrongCount: data.history.filter(h => h.correct === false).length,
+                reviewQueueCount: reviewData.length,
+                weaknessAnalysis: analyzeWeakness()
+            };
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(exportObj)
+                });
+
+                alert('Google Sheetsにおくりました！\nせんせいがかくにんできます。');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('おくれませんでした。\nもういちどためしてね。');
+            }
         }
     </script>
 </body>
