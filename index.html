@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>九九マスター</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2196F3;
+            --accent-color: #FFC107;
+            --error-color: #FF5252;
+            --text-color: #333;
+            --bg-color: #f0f4f8;
+            --font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation; /* ダブルタップズーム防止 */
+            -webkit-user-select: none;  /* テキスト選択防止 */
+            user-select: none;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1, h2, h3 {
+            margin: 0;
+            text-align: center;
+        }
+
+        button {
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        /* 画面コンテナ */
+        .screen {
+            display: none; /* JSで切り替え */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            padding: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- スタート画面 --- */
+        .start-header {
+            margin-bottom: 30px;
+        }
+        
+        .start-header h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            text-shadow: 2px 2px 0 #fff;
+        }
+
+        .dan-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .dan-btn {
+            background-color: white;
+            color: var(--secondary-color);
+            font-size: 1.8rem;
+            padding: 20px;
+            border: 3px solid var(--secondary-color);
+        }
+
+        .dan-btn.zenbu {
+            grid-column: span 3; /* 横幅いっぱいに */
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        /* --- モード選択ダイアログ --- */
+        .dialog-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .dialog-overlay.active {
+            display: flex;
+        }
+
+        .dialog-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .mode-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 1.5rem;
+            color: white;
+            border-radius: 10px;
+        }
+
+        .mode-btn.junban { background-color: var(--primary-color); }
+        .mode-btn.barabara { background-color: var(--accent-color); color: #5d4037; }
+        .mode-btn.cancel { background-color: #ddd; color: #555; margin-top: 20px; font-size: 1.2rem;}
+
+
+        /* --- 学習画面 --- */
+        .game-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            margin-bottom: 10px;
+        }
+        
+        .home-btn-mini {
+            background: #eee;
+            color: #666;
+            padding: 5px 10px;
+            font-size: 1rem;
+        }
+
+        .question-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            width: 100%;
+            position: relative;
+        }
+
+        .answer-box {
+            display: inline-block;
+            min-width: 1.5em;
+            border-bottom: 4px solid var(--text-color);
+            text-align: center;
+            color: var(--primary-color);
+            margin-left: 10px;
+        }
+
+        /* 正解・不正解のアニメーション表示 */
+        .feedback {
+            position: absolute;
+            font-size: 10rem;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .feedback.correct { color: var(--primary-color); }
+        .feedback.wrong { color: var(--error-color); }
+        
+        @keyframes feedbackAnim {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+            height: 45%; /* 高さを確保 */
+            margin-bottom: 20px;
+        }
+
+        .num-btn {
+            background-color: white;
+            font-size: 2.5rem;
+            color: #333;
+            border-bottom: 4px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .num-btn:active {
+            border-bottom: none;
+            transform: translateY(4px);
+        }
+
+        .num-btn.clear { background-color: #FFEBEE; color: var(--error-color); }
+        .num-btn.ok { background-color: #E8F5E9; color: var(--primary-color); }
+
+        /* 進捗バー */
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        /* 最後の0とOKの配置用 */
+        .num-btn.zero {
+             /* 0は中央に */
+        }
+
+        /* --- 結果画面 --- */
+        .result-content {
+            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .stamp {
+            width: 120px;
+            height: 120px;
+            border: 5px solid var(--error-color);
+            color: var(--error-color);
+            border-radius: 50%;
+            display:flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            transform: rotate(-15deg);
+            margin: 10px auto;
+            opacity: 0;
+            animation: stampAnim 0.5s ease-out 0.5s forwards;
+            flex-shrink: 0;
+        }
+
+        @keyframes stampAnim {
+            from { transform: scale(2) rotate(-15deg); opacity: 0; }
+            to { transform: scale(1) rotate(-15deg); opacity: 0.8; }
+        }
+
+        .score-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0;
+            text-align: left;
+            flex: 1; /* 残りのスペースを使う */
+            overflow-y: auto;
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+        }
+        
+        .score-list li {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background-color: var(--primary-color);
+            color: white;
+            min-width: 150px;
+        }
+        .action-btn.secondary {
+            background-color: white;
+            color: var(--text-color);
+            border: 2px solid #ddd;
+        }
+
+        .chart-section {
+            width: 100%;
+            background: white;
+            margin-top: 10px;
+            border-radius: 10px;
+            padding: 10px;
+            flex-shrink: 0;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 100px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+        }
+        
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 10%;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        
+        .bar {
+            width: 100%;
+            background-color: var(--secondary-color);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s;
+            min-height: 2px;
+        }
+        
+        .bar-label {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 1. スタート画面 -->
+    <div id="screen-start" class="screen active">
+        <div class="start-header">
+            <h1>九九マスター</h1>
+            <p>だん を えらんでね</p>
+        </div>
+        
+        <div class="dan-grid">
+            <!-- 3〜9の段 -->
+            <button class="dan-btn" onclick="openModeDialog(3)">3</button>
+            <button class="dan-btn" onclick="openModeDialog(4)">4</button>
+            <button class="dan-btn" onclick="openModeDialog(5)">5</button>
+            <button class="dan-btn" onclick="openModeDialog(6)">6</button>
+            <button class="dan-btn" onclick="openModeDialog(7)">7</button>
+            <button class="dan-btn" onclick="openModeDialog(8)">8</button>
+            <button class="dan-btn" onclick="openModeDialog(9)">9</button>
+            
+            <button class="dan-btn zenbu" onclick="openModeDialog('all')">ぜんぶ (3〜9)</button>
+        </div>
+    </div>
+
+    <!-- モード選択ダイアログ -->
+    <div id="mode-dialog" class="dialog-overlay">
+        <div class="dialog-content">
+            <h2 id="dialog-title">◯のだん</h2>
+            <p>じゅんばん を えらんでね</p>
+            <button class="mode-btn junban" onclick="startGame('junban')">じゅんばん (のぼり)</button>
+            <button class="mode-btn barabara" onclick="startGame('barabara')">バラバラ</button>
+            <button class="mode-btn cancel" onclick="closeModeDialog()">やめる</button>
+        </div>
+    </div>
+
+    <!-- 2. 学習画面 -->
+    <div id="screen-game" class="screen">
+        <div class="game-header">
+            <button class="home-btn-mini" onclick="location.reload()">HOME</button>
+            <div style="flex:1"></div>
+        </div>
+        
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        
+        <div class="question-area">
+            <span id="q-left"></span> × <span id="q-right"></span> = <span id="answer-box" class="answer-box"></span>
+            <div id="feedback" class="feedback">○</div>
+        </div>
+
+        <div class="numpad">
+            <button class="num-btn" onclick="inputNum(1)">1</button>
+            <button class="num-btn" onclick="inputNum(2)">2</button>
+            <button class="num-btn" onclick="inputNum(3)">3</button>
+            <button class="num-btn" onclick="inputNum(4)">4</button>
+            <button class="num-btn" onclick="inputNum(5)">5</button>
+            <button class="num-btn" onclick="inputNum(6)">6</button>
+            <button class="num-btn" onclick="inputNum(7)">7</button>
+            <button class="num-btn" onclick="inputNum(8)">8</button>
+            <button class="num-btn" onclick="inputNum(9)">9</button>
+            <button class="num-btn clear" onclick="clearInput()">C</button>
+            <button class="num-btn zero" onclick="inputNum(0)">0</button>
+            <button class="num-btn ok" onclick="checkAnswer()">OK</button>
+        </div>
+    </div>
+
+    <!-- 3. 結果画面 -->
+    <div id="screen-result" class="screen">
+        <div class="result-content">
+            <h2>おつかれさま！</h2>
+            <div id="stamp" class="stamp">合格</div>
+            
+            <p style="font-size: 1.2rem;">せいかい: <span id="score-text" style="font-weight:bold; font-size:1.5rem;"></span></p>
+            
+            <div style="width:100%; text-align:left; font-weight:bold; margin-top:10px;">まちがえた もんだい</div>
+            <ul id="wrong-list" class="score-list">
+                <!-- JSで挿入 -->
+            </ul>
+
+            <div class="chart-section">
+                <div style="font-size:0.9rem; margin-bottom:5px;">にがてな だん (せいかい率)</div>
+                <div id="chart-container" class="chart-container">
+                    <!-- JSでグラフ描画 -->
+                </div>
+            </div>
+
+            <div class="action-btns">
+                <button class="action-btn" onclick="location.reload()">もういちど</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * データ構造
+ * HistoryItem: { q: "3x4", correct: bool, time: number, date: timestamp }
+ */
+
+// グローバル変数
+let currentDan = 0; // 'all' or 3-9
+let currentMode = ''; // 'junban' or 'barabara'
+let questionList = [];
+let currentIndex = 0;
+let currentInput = "";
+let results = []; // 今回の結果 {q: [3,4], input: 12, correct: true}
+let startTime = 0;
+let wrongCountForCurrentQuestion = 0; // 現在の問題での誤答回数
+
+// LocalStorageキー
+const STORAGE_KEY = 'kuku_master_data_v1';
+
+// --- 初期化・データロード ---
+function loadData() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : { history: [] };
+    } catch(e) {
+        return { history: [] };
+    }
+}
+
+function saveData(newHistoryItem) {
+    const data = loadData();
+    data.history.push(newHistoryItem);
+    // 最新1000件のみ保存（容量節約）
+    if (data.history.length > 1000) data.history.shift();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// 苦手分析（簡易版）
+function analyzeWeakness() {
+    const data = loadData();
+    // 段ごとの正解率を集計
+    // 3〜9の段のみ
+    const stats = {};
+    for (let i = 3; i <= 9; i++) stats[i] = { total: 0, correct: 0 };
+
+    data.history.forEach(item => {
+        const [left, right] = item.q.split('x').map(Number);
+        if (stats[left]) {
+            stats[left].total++;
+            if (item.correct) stats[left].correct++;
+        }
+    });
+
+    return stats;
+}
+
+// --- 画面遷移 ---
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// --- スタート画面ロジック ---
+function openModeDialog(dan) {
+    currentDan = dan;
+    const title = (dan === 'all') ? "3〜9のだん" : `${dan}のだん`;
+    document.getElementById('dialog-title').innerText = title;
+    document.getElementById('mode-dialog').classList.add('active');
+}
+
+function closeModeDialog() {
+    document.getElementById('mode-dialog').classList.remove('active');
+}
+
+function startGame(mode) {
+    currentMode = mode;
+    closeModeDialog();
+    generateQuestions();
+    
+    // バラバラモードかつallでない場合は10問に制限するか、
+    // あるいは「上り」以外を選択肢として持つ場合は全問か。
+    // 今回の仕様：
+    // 「3の段」-> junban(9問) or barabara(9問シャッフル)
+    // 「all」 -> junban(63問) or barabara(20問ピックアップ)
+    
+    currentIndex = 0;
+    results = [];
+    showScreen('screen-game');
+    showQuestion();
+}
+
+// 問題生成
+function generateQuestions() {
+    questionList = [];
+    const dans = (currentDan === 'all') ? [3,4,5,6,7,8,9] : [currentDan];
+    
+    // 全組み合わせを作成
+    let allPairs = [];
+    dans.forEach(d => {
+        for (let i = 1; i <= 9; i++) {
+            allPairs.push([d, i]);
+        }
+    });
+
+    if (currentMode === 'junban') {
+        // 順番通り
+        questionList = allPairs;
+    } else {
+        // シャッフル
+        for (let i = allPairs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allPairs[i], allPairs[j]] = [allPairs[j], allPairs[i]];
+        }
+        
+        // 全段バラバラのときは問題数を絞る (20問)
+        if (currentDan === 'all') {
+            questionList = allPairs.slice(0, 20);
+        } else {
+            // 単一段のときは9問すべて実施
+            questionList = allPairs;
+        }
+    }
+}
+
+// --- ゲームロジック ---
+function showQuestion() {
+    const q = questionList[currentIndex];
+    // 0.5秒遅延して表示（前のフィードバックが消えるのを待つなど）
+    
+    document.getElementById('q-left').innerText = q[0];
+    document.getElementById('q-right').innerText = q[1];
+    document.getElementById('answer-box').innerText = "";
+    currentInput = "";
+    wrongCountForCurrentQuestion = 0; // 回数リセット
+    
+    // 進捗バー更新
+    const pct = (currentIndex / questionList.length) * 100;
+    document.getElementById('progress-fill').style.width = `${pct}%`;
+
+    startTime = Date.now();
+    
+    // フィードバックリセット
+    const fb = document.getElementById('feedback');
+    fb.style.opacity = 0; 
+}
+
+function inputNum(n) {
+    // 答えは最大81なので2桁
+    if (currentInput.length >= 2) return; 
+    currentInput += n;
+    document.getElementById('answer-box').innerText = currentInput;
+}
+
+function clearInput() {
+    currentInput = "";
+    document.getElementById('answer-box').innerText = "";
+}
+
+function checkAnswer() {
+    if (currentInput === "") return;
+    
+    const q = questionList[currentIndex];
+    const userAns = parseInt(currentInput);
+    const correctAns = q[0] * q[1];
+    
+    const isCorrect = (userAns === correctAns);
+    
+    // 初回回答のみ正否を記録するか、毎回記録するか。
+    // 「苦手分析」のためには「間違えた事実」を残したい。
+    // ここでは1問につき1回レコードを追加するのではなく、
+    // 「この問題を間違えた」カウントを内部で行い、最後に結果にまとめる。
+    // ただし、timestamp付きの履歴(saveData)は毎回行う。
+    
+    saveData({
+        q: `${q[0]}x${q[1]}`,
+        correct: isCorrect,
+        time: Date.now() - startTime,
+        date: Date.now()
+    });
+
+    // 視覚的フィードバック
+    const fb = document.getElementById('feedback');
+    fb.innerText = isCorrect ? "○" : "×";
+    fb.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+    
+    // アニメーション再生
+    fb.style.animation = 'none';
+    fb.offsetHeight; /* trigger reflow */
+    fb.style.animation = 'feedbackAnim 0.6s ease-out';
+
+    if (isCorrect) {
+        // 結果保存 (この問題に対して)
+        results.push({
+            q: q,
+            wrongCount: wrongCountForCurrentQuestion
+        });
+        
+        setTimeout(nextQuestion, 700);
+    } else {
+        wrongCountForCurrentQuestion++;
+        // 不正解の場合は入力クリアして再挑戦
+        setTimeout(() => {
+            clearInput();
+        }, 300);
+    }
+}
+
+function nextQuestion() {
+    currentIndex++;
+    if (currentIndex >= questionList.length) {
+        finishGame();
+    } else {
+        showQuestion();
+    }
+}
+
+function finishGame() {
+    showScreen('screen-result');
+    
+    // 満点かどうか
+    // wrongCount > 0 の問題があったかどうか
+    const mistakes = results.filter(r => r.wrongCount > 0);
+    const isPerfect = (mistakes.length === 0);
+    
+    const stamp = document.getElementById('stamp');
+    if (isPerfect) {
+        stamp.innerText = "合格";
+        stamp.style.borderColor = "#FF5252";
+        stamp.style.color = "#FF5252";
+        document.getElementById('score-text').innerHTML = 
+            `<span style="color:#FF5252">ぜんもんせいかい！</span>`;
+    } else {
+        stamp.innerText = "完了";
+        stamp.style.borderColor = "#2196F3";
+        stamp.style.color = "#2196F3";
+        document.getElementById('score-text').innerText = 
+            `${results.length}もん中 ${results.length - mistakes.length}もんせいかい`;
+    }
+
+    // 間違えた問題リスト
+    const ul = document.getElementById('wrong-list');
+    ul.innerHTML = "";
+    if (mistakes.length === 0) {
+        const li = document.createElement('li');
+        li.innerText = "まちがいはありません。すばらしい！";
+        li.style.justifyContent = "center";
+        ul.appendChild(li);
+    } else {
+        mistakes.forEach(m => {
+            const li = document.createElement('li');
+            // 正解の値
+            const ans = m.q[0] * m.q[1];
+            li.innerHTML = `<span>${m.q[0]} × ${m.q[1]}</span> <span>= ${ans}</span>`;
+            ul.appendChild(li);
+            // 間違えた回数も出せたら出す？今回はシンプルに
+        });
+    }
+
+    renderChart();
+}
+
+function renderChart() {
+    const stats = analyzeWeakness(); // {3: {total:10, correct:8}, ...}
+    const container = document.getElementById('chart-container');
+    container.innerHTML = "";
+
+    // データがある段だけ表示するか、3-9全て表示するか -> 全て表示
+    for (let i = 3; i <= 9; i++) {
+        const s = stats[i];
+        let rate = 0;
+        let hasData = s.total > 0;
+        if (hasData) {
+            rate = Math.round((s.correct / s.total) * 100);
+        }
+        
+        const group = document.createElement('div');
+        group.className = 'bar-group';
+        
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        // データがない場合は0だが、少しだけ表示しておく(2px)
+        const heightPct = hasData ? rate : 2; 
+        bar.style.height = `${heightPct}%`;
+        
+        // 色分け
+        if (!hasData) {
+            bar.style.backgroundColor = '#e0e0e0';
+        } else if (rate < 60) {
+            bar.style.backgroundColor = '#FF5252'; // 赤
+        } else if (rate < 90) {
+            bar.style.backgroundColor = '#FFC107'; // 黄
+        } else {
+            bar.style.backgroundColor = '#2196F3'; // 青
+        }
+
+        const label = document.createElement('div');
+        label.className = 'bar-label';
+        label.innerText = i; 
+
+        group.appendChild(bar);
+        group.appendChild(label);
+        container.appendChild(group);
+    }
+}
+
+</script>
+</body>
+</html>
