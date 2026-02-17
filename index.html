@@ -158,6 +158,25 @@
             top: 4px;
         }
 
+        /* わからないボタン */
+        .skip-btn {
+            background: transparent;
+            color: #999;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: 2px dashed #ccc;
+            border-radius: 30px;
+            padding: 10px 40px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .skip-btn:active {
+            background: #f0f0f0;
+            color: #666;
+        }
+
         /* --- モード選択ダイアログ --- */
         .dialog-overlay {
             position: fixed;
@@ -609,7 +628,7 @@
         </div>
 
         <div class="numpad-container">
-            <button class="home-btn-side" onclick="location.reload()">HOME</button>
+            <button class="home-btn-side" onclick="confirmHome()">HOME</button>
             <div class="numpad">
                 <button class="num-btn" onclick="inputNum(1)">1</button>
                 <button class="num-btn" onclick="inputNum(2)">2</button>
@@ -625,6 +644,7 @@
                 <button class="num-btn ok" onclick="checkAnswer()">OK</button>
             </div>
         </div>
+        <button class="skip-btn" onclick="skipQuestion()">わからない</button>
     </div>
 
     <!-- 3. 結果画面 -->
@@ -652,7 +672,33 @@
             <div class="action-btns">
                 <button class="action-btn" onclick="location.reload()">もういちど</button>
                 <button class="action-btn" style="background: linear-gradient(135deg, #4caf50, #66bb6a);"
-                    onclick="sendToSheets()">せんせいにおくる</button>
+                    onclick="openNumberDialog()">せんせいにおくる</button>
+            </div>
+
+            <!-- 出席番号入力ダイアログ -->
+            <div id="number-dialog" class="dialog-overlay">
+                <div class="dialog-content">
+                    <h2>しゅっせきばんごう</h2>
+                    <p>ばんごうをいれてね</p>
+                    <div id="number-display"
+                        style="font-size: 3rem; font-weight: bold; min-height: 60px; color: var(--primary-color); margin: 10px 0;">
+                    </div>
+                    <div class="numpad" style="height: auto; max-width: 300px; margin: 0 auto;">
+                        <button class="num-btn" onclick="inputStudentNum(1)">1</button>
+                        <button class="num-btn" onclick="inputStudentNum(2)">2</button>
+                        <button class="num-btn" onclick="inputStudentNum(3)">3</button>
+                        <button class="num-btn" onclick="inputStudentNum(4)">4</button>
+                        <button class="num-btn" onclick="inputStudentNum(5)">5</button>
+                        <button class="num-btn" onclick="inputStudentNum(6)">6</button>
+                        <button class="num-btn" onclick="inputStudentNum(7)">7</button>
+                        <button class="num-btn" onclick="inputStudentNum(8)">8</button>
+                        <button class="num-btn" onclick="inputStudentNum(9)">9</button>
+                        <button class="num-btn clear" onclick="clearStudentNum()">C</button>
+                        <button class="num-btn zero" onclick="inputStudentNum(0)">0</button>
+                        <button class="num-btn ok" onclick="submitStudentNum()">OK</button>
+                    </div>
+                    <button class="mode-btn cancel" onclick="closeNumberDialog()" style="margin-top: 10px;">やめる</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1146,54 +1192,95 @@
             }
         });
 
-        // データエクスポート関数
-        function exportData() {
-            const now = new Date();
-            const timestamp = now.toISOString().split('T')[0]; // YYYY-MM-DD
-            const data = loadData();
-            const reviewData = loadReviewData();
+        // --- わからないボタン ---
+        function skipQuestion() {
+            const q = questionList[currentIndex];
+            const correctAns = q[0] * q[1];
 
-            // エクスポート用データを整形
-            const exportObj = {
-                exportDate: now.toISOString(),
-                studentName: prompt('なまえをいれてね（ローマじ）', 'student') || 'student',
-                totalQuestions: data.history.length,
-                correctCount: data.history.filter(h => h.correct).length,
-                wrongCount: data.history.filter(h => h.correct === false).length,
-                reviewQueueCount: reviewData.length,
-                history: data.history.slice(-100), // 最新100件のみ
-                reviewQueue: reviewData,
-                weaknessAnalysis: analyzeWeakness()
-            };
+            // 答えを表示
+            document.getElementById('answer-box').innerText = correctAns;
+            document.getElementById('answer-box').style.color = '#2196F3';
 
-            // JSONファイルとしてダウンロード
-            const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `kuku_${exportObj.studentName}_${timestamp}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // 不正解として記録
+            saveData({
+                q: `${q[0]}x${q[1]}`,
+                correct: false,
+                time: Date.now() - startTime,
+                date: Date.now()
+            });
+            calculateNextReview(`${q[0]}x${q[1]}`, false);
 
-            alert('データをダウンロードしました！\nロイロノートでせんせいにおくってね。');
+            // コンボリセット
+            comboCount = 0;
+            document.getElementById('combo-badge').classList.remove('active');
+
+            // 結果に記録
+            results.push({
+                q: q,
+                wrongCount: wrongCountForCurrentQuestion + 1
+            });
+
+            // 問題リストの末尾に同じ問題を追加（あとでもう一度出題）
+            questionList.push([q[0], q[1]]);
+
+            // 2秒間答えを見せてから次の問題へ
+            setTimeout(() => {
+                document.getElementById('answer-box').style.color = 'var(--primary-color)';
+                nextQuestion();
+            }, 2000);
+        }
+
+        // --- HOME確認ポップアップ ---
+        function confirmHome() {
+            if (confirm('ほんとうに おわりますか？')) {
+                location.reload();
+            }
+        }
+
+        // --- 出席番号入力ダイアログ ---
+        let studentNumber = '';
+
+        function openNumberDialog() {
+            studentNumber = '';
+            document.getElementById('number-display').innerText = '';
+            document.getElementById('number-dialog').classList.add('active');
+        }
+
+        function closeNumberDialog() {
+            document.getElementById('number-dialog').classList.remove('active');
+        }
+
+        function inputStudentNum(n) {
+            if (studentNumber.length >= 3) return;
+            studentNumber += n;
+            document.getElementById('number-display').innerText = studentNumber;
+        }
+
+        function clearStudentNum() {
+            studentNumber = '';
+            document.getElementById('number-display').innerText = '';
+        }
+
+        function submitStudentNum() {
+            if (studentNumber === '') {
+                alert('ばんごうをいれてね');
+                return;
+            }
+            closeNumberDialog();
+            sendToSheets(studentNumber);
         }
 
         // Google Sheetsへのデータ送信
-        async function sendToSheets() {
+        async function sendToSheets(studentNum) {
             const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfKDqXB7-qX5HPWutvaGCe5cWi31LZbTQYT2omiGdDIKP27ZzMbmqiqTejQdhoPfxX/exec';
 
             const now = new Date();
             const data = loadData();
             const reviewData = loadReviewData();
 
-            const studentName = prompt('なまえをいれてね（ローマじ）', 'student') || 'student';
-
-            // 送信用データを整形
             const exportObj = {
                 exportDate: now.toISOString(),
-                studentName: studentName,
+                studentName: studentNum,
                 totalQuestions: data.history.length,
                 correctCount: data.history.filter(h => h.correct).length,
                 wrongCount: data.history.filter(h => h.correct === false).length,
@@ -1202,16 +1289,13 @@
             };
 
             try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(exportObj)
                 });
-
-                alert('Google Sheetsにおくりました！\nせんせいがかくにんできます。');
+                alert('せんせいに おくりました！');
             } catch (error) {
                 console.error('Error:', error);
                 alert('おくれませんでした。\nもういちどためしてね。');
