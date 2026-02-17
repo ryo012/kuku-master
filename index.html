@@ -139,6 +139,25 @@
             box-shadow: 0 2px 0 #1971c2;
         }
 
+        /* おすすめボタン */
+        .recommend-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-color), #ffd54f);
+            color: #5d4037;
+            font-size: 1.3rem;
+            padding: 20px;
+            border: none;
+            box-shadow: 0 6px 0 #f59f00;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .recommend-btn:active {
+            box-shadow: 0 2px 0 #f59f00;
+            top: 4px;
+        }
+
         /* --- モード選択ダイアログ --- */
         .dialog-overlay {
             position: fixed;
@@ -537,7 +556,16 @@
     <div id="screen-start" class="screen active">
         <div class="start-header">
             <h1>九九マスター</h1>
-            <p>だん を えらんでね</p>
+            <p id="session-subtitle">だん を えらんでね</p>
+        </div>
+
+        <!-- おすすめボタン -->
+        <div id="recommend-section" style="width: 100%; max-width: 500px; margin-bottom: 20px; display: none;">
+            <button id="recommend-btn" class="recommend-btn" onclick="startReviewMode()">
+                <div style="font-size: 1.2rem; font-weight: bold;">【おすすめ】</div>
+                <div id="recommend-text" style="font-size: 1.5rem; margin: 5px 0;"></div>
+                <div id="recommend-count" style="font-size: 1rem; opacity: 0.8;"></div>
+            </button>
         </div>
 
         <div class="dan-grid">
@@ -645,6 +673,30 @@
 
         // LocalStorageキー
         const STORAGE_KEY = 'kuku_master_data_v1';
+        const REVIEW_STORAGE_KEY = 'kuku_master_review_v1';
+
+        // 時間帯判定
+        function getCurrentSession() {
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+
+            if (hour === 8) return 'morning';
+            if (hour >= 9 && (hour < 12 || (hour === 12 && minute <= 30))) return 'noon';
+            if ((hour === 12 && minute >= 45) || (hour >= 13 && hour < 18)) return 'evening';
+            return 'free';
+        }
+
+        // セッション名の日本語表示
+        function getSessionName(session) {
+            const names = {
+                'morning': 'あさのれんしゅう',
+                'noon': 'ひるのれんしゅう',
+                'evening': 'かえりのれんしゅう',
+                'free': 'じゆうれんしゅう'
+            };
+            return names[session] || 'れんしゅう';
+        }
 
         // --- 初期化・データロード ---
         function loadData() {
@@ -662,6 +714,103 @@
             // 最新1000件のみ保存（容量節約）
             if (data.history.length > 1000) data.history.shift();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        // --- 復習データ管理 ---
+        function loadReviewData() {
+            try {
+                const data = localStorage.getItem(REVIEW_STORAGE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveReviewData(reviewData) {
+            localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviewData));
+        }
+
+        // 復習スケジュールの計算
+        function calculateNextReview(question, isCorrect) {
+            const reviewData = loadReviewData();
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+
+            let item = reviewData.find(r => r.question === question);
+
+            if (!item) {
+                // 新規登録
+                item = {
+                    question: question,
+                    lastReviewed: now.toISOString(),
+                    nextReview: null,
+                    reviewStage: 0,
+                    todayAttempts: 0,
+                    lastAttemptDate: today
+                };
+                reviewData.push(item);
+            }
+
+            // 日付が変わったら今日の挑戦回数をリセット
+            if (item.lastAttemptDate !== today) {
+                item.todayAttempts = 0;
+                item.lastAttemptDate = today;
+            }
+
+            item.todayAttempts++;
+            item.lastReviewed = now.toISOString();
+
+            if (isCorrect) {
+                // 正解時：ステージを進める
+                item.reviewStage++;
+                const intervals = [0, 1, 3, 7, 14]; // 日数
+                if (item.reviewStage >= intervals.length) {
+                    // 定着完了：復習リストから削除
+                    const index = reviewData.indexOf(item);
+                    reviewData.splice(index, 1);
+                    saveReviewData(reviewData);
+                    return;
+                }
+
+                const nextDate = new Date(now);
+                nextDate.setDate(nextDate.getDate() + intervals[item.reviewStage]);
+                item.nextReview = nextDate.toISOString();
+            } else {
+                // 不正解時：次の復習タイミングを設定
+                const nextReviewTime = new Date(now);
+
+                if (item.todayAttempts === 1) {
+                    // 初回間違い → 3時間後
+                    nextReviewTime.setHours(nextReviewTime.getHours() + 3);
+                } else if (item.todayAttempts === 2) {
+                    // 2回目間違い → 今日の最終セッション（17時）
+                    nextReviewTime.setHours(17, 0, 0, 0);
+                } else {
+                    // 3回目以降 → 翌日の朝8時
+                    nextReviewTime.setDate(nextReviewTime.getDate() + 1);
+                    nextReviewTime.setHours(8, 0, 0, 0);
+                }
+
+                item.nextReview = nextReviewTime.toISOString();
+                item.reviewStage = 0; // ステージをリセット
+            }
+
+            saveReviewData(reviewData);
+        }
+
+        // 復習すべき問題を取得
+        function getReviewQuestions() {
+            const reviewData = loadReviewData();
+            const now = new Date();
+
+            return reviewData.filter(item => {
+                if (!item.nextReview) return false;
+                const nextReview = new Date(item.nextReview);
+                return nextReview <= now;
+            }).map(item => {
+                const [left, right] = item.question.split('x').map(Number);
+                return [left, right];
+            });
         }
 
         // 苦手分析（簡易版）
@@ -699,6 +848,23 @@
 
         function closeModeDialog() {
             document.getElementById('mode-dialog').classList.remove('active');
+        }
+
+        // 復習モードの開始
+        function startReviewMode() {
+            const reviewQuestions = getReviewQuestions();
+            if (reviewQuestions.length === 0) {
+                alert('今はふくしゅうするもんだいがないよ！');
+                return;
+            }
+
+            currentDan = 'review';
+            currentMode = 'review';
+            questionList = reviewQuestions;
+            currentIndex = 0;
+            results = [];
+            showScreen('screen-game');
+            showQuestion();
         }
 
         function startGame(mode) {
@@ -806,6 +972,9 @@
                 time: Date.now() - startTime,
                 date: Date.now()
             });
+
+            // 復習スケジュールを更新
+            calculateNextReview(`${q[0]}x${q[1]}`, isCorrect);
 
             // 視覚的フィードバック
             const fb = document.getElementById('feedback');
@@ -942,6 +1111,28 @@
             }
         }
 
+    </script>
+
+    <script>
+        // ページ読み込み時の初期化
+        window.addEventListener('DOMContentLoaded', function () {
+            const session = getCurrentSession();
+            const sessionName = getSessionName(session);
+            const reviewQuestions = getReviewQuestions();
+            const reviewCount = reviewQuestions.length;
+
+            // セッションに応じたサブタイトル
+            if (session !== 'free') {
+                document.getElementById('session-subtitle').innerText = sessionName + ' のじかんだよ！';
+            }
+
+            // 復習すべき問題があれば「おすすめ」ボタンを表示
+            if (reviewCount > 0) {
+                document.getElementById('recommend-section').style.display = 'block';
+                document.getElementById('recommend-text').innerText = sessionName;
+                document.getElementById('recommend-count').innerText = `ふくしゅう ${reviewCount}もん`;
+            }
+        });
     </script>
 </body>
 
