@@ -1116,6 +1116,36 @@
             localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(reviewData));
         }
 
+        // --- 送信キュー・生徒番号管理 ---
+        const QUEUE_KEY = 'kuku_master_send_queue_v1';
+        const STUDENT_NUM_KEY = 'kuku_master_student_num_v1';
+
+        function loadQueue() {
+            try {
+                const data = localStorage.getItem(QUEUE_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) { return []; }
+        }
+
+        function saveQueue(queue) {
+            localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+        }
+
+        function addToQueue(data) {
+            const queue = loadQueue();
+            queue.push(data);
+            saveQueue(queue);
+            processQueue(); // 追加したら即座に送信試行
+        }
+
+        function loadStudentNum() {
+            return localStorage.getItem(STUDENT_NUM_KEY) || '';
+        }
+
+        function saveStudentNum(num) {
+            localStorage.setItem(STUDENT_NUM_KEY, num);
+        }
+
         // 復習スケジュールの計算
         function calculateNextReview(question, isCorrect) {
             const reviewData = loadReviewData();
@@ -1469,17 +1499,26 @@
                 li.style.justifyContent = "center";
                 ul.appendChild(li);
             } else {
-                mistakes.forEach(m => {
+                mistakes.forEach(r => {
                     const li = document.createElement('li');
-                    // 正解の値
-                    const ans = m.q[0] * m.q[1];
-                    li.innerHTML = `<span>${m.q[0]} × ${m.q[1]}</span> <span>= ${ans}</span>`;
+                    li.innerText = `${r.q[0]} × ${r.q[1]} = ${r.q[0] * r.q[1]} (まちがい: ${r.wrongCount}かい)`;
                     ul.appendChild(li);
-                    // 間違えた回数も出せたら出す？今回はシンプルに
                 });
             }
 
+
+
             renderChart();
+
+            // 自動送信処理
+            const savedNum = loadStudentNum();
+            if (savedNum) {
+                // 番号があれば自動でキューに追加
+                createAndQueueExportData(savedNum);
+            } else {
+                // なければダイアログ表示
+                openNumberDialog();
+            }
         }
 
         function renderChart() {
@@ -1664,12 +1703,18 @@
             }
         }
 
-        // --- 出席番号入力ダイアログ ---
-        let studentNumber = '';
+        // --- 生徒番号入力と送信 ---
+        let studentNumber = "";
 
         function openNumberDialog() {
-            studentNumber = '';
-            document.getElementById('number-display').innerText = '';
+            // 保存された番号があればそれをセット
+            const saved = loadStudentNum();
+            if (saved) {
+                studentNumber = saved;
+            } else {
+                studentNumber = "";
+            }
+            document.getElementById('number-display').innerText = studentNumber;
             document.getElementById('number-dialog').classList.add('active');
         }
 
@@ -1693,19 +1738,22 @@
                 alert('ばんごうをいれてね');
                 return;
             }
+            saveStudentNum(studentNumber); // 番号を保存
             closeNumberDialog();
-            sendToSheets(studentNumber);
+
+            // データ作成とキュー追加
+            createAndQueueExportData(studentNumber);
+            alert('データをほぞんしました。じどうでそうしんします！');
         }
 
-        // Google Sheetsへのデータ送信
-        async function sendToSheets(studentNum) {
-            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfKDqXB7-qX5HPWutvaGCe5cWi31LZbTQYT2omiGdDIKP27ZzMbmqiqTejQdhoPfxX/exec';
-
+        // 送信データの作成とキューイング
+        function createAndQueueExportData(studentNum) {
             const now = new Date();
             const data = loadData();
             const reviewData = loadReviewData();
 
             const exportObj = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Unique ID
                 exportDate: now.toISOString(),
                 studentName: studentNum,
                 totalQuestions: data.history.length,
@@ -1715,19 +1763,68 @@
                 weaknessAnalysis: analyzeWeakness()
             };
 
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(exportObj)
-                });
-                alert('せんせいに おくりました！');
-            } catch (error) {
-                console.error('Error:', error);
-                alert('おくれませんでした。\nもういちどためしてね。');
+            addToQueue(exportObj);
+        }
+
+        // キューの処理（送信リトライ）
+        let isSending = false;
+        async function processQueue() {
+            if (isSending) return;
+
+            const queue = loadQueue();
+            if (queue.length === 0) return;
+
+            isSending = true;
+            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfKDqXB7-qX5HPWutvaGCe5cWi31LZbTQYT2omiGdDIKP27ZzMbmqiqTejQdhoPfxX/exec';
+
+            // 先頭から順に送信
+            // ※送信成功したものだけ削除する
+            const newQueue = [...queue];
+            let sentCount = 0;
+
+            for (const item of queue) {
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    });
+
+                    // no-corsなので成功か厳密にはわからないが、エラーが出なければ成功とみなす
+                    // （GAS側で受信ログを残す前提）
+                    console.log('Sent item:', item.id);
+
+                    // 送信済みアイテムを削除
+                    const idx = newQueue.findIndex(q => q.id === item.id);
+                    if (idx !== -1) newQueue.splice(idx, 1);
+
+                    sentCount++;
+
+                } catch (error) {
+                    console.error('Send error:', error);
+                    // エラーならループを抜けて、残りは次回へ
+                    break;
+                }
+            }
+
+            saveQueue(newQueue);
+            isSending = false;
+
+            if (sentCount > 0 && newQueue.length === 0) {
+                // 全て送信完了
+                console.log('All queue items sent.');
             }
         }
+
+        // 定期的に送信試行（2分ごと）
+        setInterval(processQueue, 120000);
+
+        // 起動時にも試行
+        window.addEventListener('load', () => {
+            // 少し待ってから実行
+            setTimeout(processQueue, 3000);
+        });
     </script>
 </body>
 
