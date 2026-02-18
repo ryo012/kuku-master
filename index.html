@@ -649,6 +649,75 @@
             justify-content: flex-end;
         }
 
+        /* レベル説明ポップアップ */
+        .level-desc-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            text-align: left;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 10px;
+        }
+
+        .level-desc-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .level-desc-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            margin-right: 15px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .level-desc-content {
+            flex: 1;
+        }
+
+        .level-desc-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+            color: var(--primary-color);
+        }
+
+        .level-desc-text {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .help-btn {
+            background: #eee;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 10%;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
         .bar {
             width: 100%;
             background-color: var(--secondary-color);
@@ -684,13 +753,17 @@
 
         <div class="dan-area">
             <div class="level-legend">
-                <div class="level-legend-title">レベル</div>
-                <div class="level-dot mastery-none"></div>
-                <div class="level-dot mastery-started"></div>
-                <div class="level-dot mastery-review"></div>
-                <div class="level-dot mastery-growing"></div>
-                <div class="level-dot mastery-almost"></div>
-                <div class="level-dot mastery-complete"></div>
+                <div style="display:flex; width:100%; align-items:center; margin-bottom:5px;">
+                    <div class="level-legend-title" style="margin:0;">レベル</div>
+                    <button class="help-btn" onclick="openLevelDialog()">?</button>
+                </div>
+
+                <div class="level-dot mastery-complete" title="かんぺき"></div>
+                <div class="level-dot mastery-almost" title="もうすぐ"></div>
+                <div class="level-dot mastery-growing" title="いいかんじ"></div>
+                <div class="level-dot mastery-review" title="おぼえはじめ"></div>
+                <div class="level-dot mastery-started" title="れんしゅう"></div>
+                <div class="level-dot mastery-none" title="まだ"></div>
             </div>
             <div class="dan-grid">
                 <!-- 3〜9の段 -->
@@ -743,6 +816,65 @@
             <button class="mode-btn junban" onclick="startGame('junban')">じゅんばん (のぼり)</button>
             <button class="mode-btn barabara" onclick="startGame('barabara')">バラバラ</button>
             <button class="mode-btn cancel" onclick="closeModeDialog()">やめる</button>
+        </div>
+    </div>
+
+    <!-- レベル説明ダイアログ -->
+    <div id="level-dialog" class="dialog-overlay">
+        <div class="dialog-content" style="max-width: 500px;">
+            <h2>レベルの ひみつ</h2>
+            <div style="max-height: 400px; overflow-y: auto; padding: 10px;">
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-complete">✨</div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">九九マスター！ (かんぺき)</div>
+                        <div class="level-desc-text">すごい！ すべてのふくしゅうを クリアしたよ！<br>もう きみは むてきだ！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-almost"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">もうすぐ かんぺき</div>
+                        <div class="level-desc-text">1しゅうかんごの ふくしゅうも せいかいできた！<br>あとすこしで マスターだ！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-growing"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">しっかり おぼえてきた</div>
+                        <div class="level-desc-text">3かごの ふくしゅうも せいかいできた！<br>わすれにくく なってきたよ。</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-review"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">おぼえはじめ</div>
+                        <div class="level-desc-text">きのうの ふくしゅうは せいかいできたね。<br>まだ わすれやすいから きをつけよう。</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-started"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">れんしゅう中</div>
+                        <div class="level-desc-text">まちがいが おおいよ。<br>なんども れんしゅうして おぼえよう！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-none"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">まだ やっていない</div>
+                        <div class="level-desc-text">まずは 1かい チャレンジしてみよう！</div>
+                    </div>
+                </div>
+
+            </div>
+            <button class="mode-btn" onclick="closeLevelDialog()">わかった！</button>
         </div>
     </div>
 
@@ -834,6 +966,67 @@
                     <button class="mode-btn cancel" onclick="closeNumberDialog()" style="margin-top: 10px;">やめる</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+
+
+    <!-- レベル説明ダイアログ -->
+    <div id="level-dialog" class="dialog-overlay">
+        <div class="dialog-content" style="max-width: 500px;">
+            <h2>レベルの ひみつ</h2>
+            <div style="max-height: 400px; overflow-y: auto; padding: 10px;">
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-complete">✨</div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">九九マスター！ (かんぺき)</div>
+                        <div class="level-desc-text">すごい！ すべてのふくしゅうを クリアしたよ！<br>もう きみは むてきだ！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-almost"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">もうすぐ かんぺき</div>
+                        <div class="level-desc-text">1しゅうかんごの ふくしゅうも せいかいできた！<br>あとすこしで マスターだ！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-growing"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">しっかり おぼえてきた</div>
+                        <div class="level-desc-text">3かごの ふくしゅうも せいかいできた！<br>わすれにくく なってきたよ。</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-review"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">おぼえはじめ</div>
+                        <div class="level-desc-text">きのうの ふくしゅうは せいかいできたね。<br>まだ わすれやすいから きをつけよう。</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-started"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">れんしゅう中</div>
+                        <div class="level-desc-text">まちがいが おおいよ。<br>なんども れんしゅうして おぼえよう！</div>
+                    </div>
+                </div>
+
+                <div class="level-desc-row">
+                    <div class="level-desc-dot mastery-none"></div>
+                    <div class="level-desc-content">
+                        <div class="level-desc-title">まだ やっていない</div>
+                        <div class="level-desc-text">まずは 1かい チャレンジしてみよう！</div>
+                    </div>
+                </div>
+
+            </div>
+            <button class="mode-btn" onclick="closeLevelDialog()">わかった！</button>
         </div>
     </div>
 
@@ -953,9 +1146,17 @@
             item.lastReviewed = now.toISOString();
 
             if (isCorrect) {
-                // 正解時：ステージを進める
-                item.reviewStage++;
+                // 正解時：復習タイミングであればステージを進める
+                const isReviewDue = !item.nextReview || (new Date(item.nextReview) <= now);
+
+                if (isReviewDue) {
+                    item.reviewStage++; // ステージアップ
+                }
+
+                // 次回のスケジュール設定
                 const intervals = [0, 1, 3, 7, 14]; // 日数
+
+                // 定着完了チェック
                 if (item.reviewStage >= intervals.length) {
                     // 定着完了：復習リストから削除
                     const index = reviewData.indexOf(item);
@@ -964,7 +1165,11 @@
                     return;
                 }
 
+                // 次回の復習予定日を計算
                 const nextDate = new Date(now);
+                // まだ復習時期じゃないのに練習した場合は、現在時刻からではなく
+                // 「本来の予定日」または「現在」の遅い方から計算すべきだが、
+                // シンプルに「正解した時点から次の間隔」で設定する形で十分（復習の前倒しはしない）
                 nextDate.setDate(nextDate.getDate() + intervals[item.reviewStage]);
                 item.nextReview = nextDate.toISOString();
             } else {
@@ -1028,6 +1233,15 @@
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+        }
+
+        // --- レベル説明ダイアログ ---
+        function openLevelDialog() {
+            document.getElementById('level-dialog').classList.add('active');
+        }
+
+        function closeLevelDialog() {
+            document.getElementById('level-dialog').classList.remove('active');
         }
 
         // --- スタート画面ロジック ---
