@@ -118,13 +118,73 @@
             background-color: white;
             color: var(--secondary-color);
             font-size: 2.2rem;
-            padding: 25px 0;
+            padding: 0;
             border: 3px solid #e0e0e0;
             box-shadow: 0 6px 0 #e0e0e0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .dan-btn:active {
             box-shadow: 0 2px 0 #e0e0e0;
+        }
+
+        .dan-label {
+            padding: 15px 0 5px;
+            font-size: 2.2rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .mastery-bar {
+            display: flex;
+            width: 100%;
+            height: 18px;
+            pointer-events: none;
+        }
+
+        .mastery-half {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.55rem;
+            font-weight: bold;
+            color: rgba(0, 0, 0, 0.4);
+            transition: background-color 0.5s;
+        }
+
+        .mastery-half.left {
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* 習熟度カラー */
+        .mastery-none {
+            background-color: #e0e0e0;
+        }
+
+        .mastery-started {
+            background-color: #ef5350;
+            color: white !important;
+        }
+
+        .mastery-review {
+            background-color: #ffa726;
+        }
+
+        .mastery-growing {
+            background-color: #ffee58;
+        }
+
+        .mastery-almost {
+            background-color: #9ccc65;
+        }
+
+        .mastery-complete {
+            background-color: #42a5f5;
+            color: white !important;
         }
 
         .dan-btn.zenbu {
@@ -589,13 +649,41 @@
 
         <div class="dan-grid">
             <!-- 3〜9の段 -->
-            <button class="dan-btn" onclick="openModeDialog(3)">3</button>
-            <button class="dan-btn" onclick="openModeDialog(4)">4</button>
-            <button class="dan-btn" onclick="openModeDialog(5)">5</button>
-            <button class="dan-btn" onclick="openModeDialog(6)">6</button>
-            <button class="dan-btn" onclick="openModeDialog(7)">7</button>
-            <button class="dan-btn" onclick="openModeDialog(8)">8</button>
-            <button class="dan-btn" onclick="openModeDialog(9)">9</button>
+            <button class="dan-btn" id="dan-3" onclick="openModeDialog(3)">
+                <span class="dan-label">3</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-3-j">の</span><span
+                        class="mastery-half mastery-none" id="m-3-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-4" onclick="openModeDialog(4)">
+                <span class="dan-label">4</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-4-j">の</span><span
+                        class="mastery-half mastery-none" id="m-4-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-5" onclick="openModeDialog(5)">
+                <span class="dan-label">5</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-5-j">の</span><span
+                        class="mastery-half mastery-none" id="m-5-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-6" onclick="openModeDialog(6)">
+                <span class="dan-label">6</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-6-j">の</span><span
+                        class="mastery-half mastery-none" id="m-6-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-7" onclick="openModeDialog(7)">
+                <span class="dan-label">7</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-7-j">の</span><span
+                        class="mastery-half mastery-none" id="m-7-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-8" onclick="openModeDialog(8)">
+                <span class="dan-label">8</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-8-j">の</span><span
+                        class="mastery-half mastery-none" id="m-8-b">バ</span></div>
+            </button>
+            <button class="dan-btn" id="dan-9" onclick="openModeDialog(9)">
+                <span class="dan-label">9</span>
+                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-9-j">の</span><span
+                        class="mastery-half mastery-none" id="m-9-b">バ</span></div>
+            </button>
 
             <button class="dan-btn zenbu" onclick="openModeDialog('all')">ぜんぶ (3〜9)</button>
         </div>
@@ -1172,6 +1260,70 @@
     </script>
 
     <script>
+        // --- 習熟度計算 ---
+        function getMasteryLevel(dan, mode) {
+            // mode: 'junban' or 'barabara'
+            const data = loadData();
+            const reviewData = loadReviewData();
+
+            // その段・モードでの直近の完走データを探す
+            // historyから該当する段の問題を集める
+            const danQuestions = [];
+            for (let i = 1; i <= 9; i++) {
+                danQuestions.push(`${dan}x${i}`);
+            }
+
+            // 直近の履歴からこの段の正解率を計算
+            const recentHistory = data.history.filter(h => {
+                const parts = h.q.split('x');
+                return parseInt(parts[0]) === dan;
+            });
+
+            if (recentHistory.length === 0) return 'none'; // 未挑戦
+
+            // 直近9問分（1セット分）の結果を取得
+            const lastSet = recentHistory.slice(-9);
+            const correctRate = lastSet.filter(h => h.correct).length / lastSet.length;
+
+            if (correctRate < 0.7) return 'started'; // 赤：間違い多い
+
+            // 復習データからこの段の問題のステージを確認
+            const danReviewItems = reviewData.filter(r => {
+                const parts = r.question.split('x');
+                return parseInt(parts[0]) === dan;
+            });
+
+            // 復習リストに問題が残っている場合
+            if (danReviewItems.length > 0) {
+                // 最も低いステージで判定
+                const minStage = Math.min(...danReviewItems.map(r => r.reviewStage));
+                if (minStage <= 1) return 'review';  // オレンジ：短期記憶
+                if (minStage <= 2) return 'growing';  // 黄色：3日復習クリア
+                return 'almost'; // 黄緑：7日以上
+            }
+
+            // 復習リストに問題がない = 全問定着済みまたは正解率高い
+            if (correctRate >= 0.9) return 'complete'; // 青：完全定着
+            return 'almost'; // 黄緑
+        }
+
+        function updateMasteryColors() {
+            for (let dan = 3; dan <= 9; dan++) {
+                const jLevel = getMasteryLevel(dan, 'junban');
+                const bLevel = getMasteryLevel(dan, 'barabara');
+
+                const jEl = document.getElementById(`m-${dan}-j`);
+                const bEl = document.getElementById(`m-${dan}-b`);
+
+                if (jEl) {
+                    jEl.className = `mastery-half left mastery-${jLevel}`;
+                }
+                if (bEl) {
+                    bEl.className = `mastery-half mastery-${bLevel}`;
+                }
+            }
+        }
+
         // ページ読み込み時の初期化
         window.addEventListener('DOMContentLoaded', function () {
             const session = getCurrentSession();
@@ -1190,6 +1342,9 @@
                 document.getElementById('recommend-text').innerText = sessionName;
                 document.getElementById('recommend-count').innerText = `ふくしゅう ${reviewCount}もん`;
             }
+
+            // 習熟度カラーを更新
+            updateMasteryColors();
         });
 
         // --- わからないボタン ---
