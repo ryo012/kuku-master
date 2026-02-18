@@ -114,6 +114,41 @@
             padding: 10px;
         }
 
+        .dan-area {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 620px;
+            align-items: flex-start;
+        }
+
+        .level-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 6px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 4px 0 #e0e0e0;
+            flex-shrink: 0;
+            width: 52px;
+            align-items: center;
+        }
+
+        .level-legend-title {
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: #999;
+            margin-bottom: 2px;
+        }
+
+        .level-dot {
+            width: 36px;
+            height: 18px;
+            border-radius: 4px;
+        }
+
         .dan-btn {
             background-color: white;
             color: var(--secondary-color);
@@ -647,45 +682,56 @@
             </button>
         </div>
 
-        <div class="dan-grid">
-            <!-- 3〜9の段 -->
-            <button class="dan-btn" id="dan-3" onclick="openModeDialog(3)">
-                <span class="dan-label">3</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-3-j">の</span><span
-                        class="mastery-half mastery-none" id="m-3-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-4" onclick="openModeDialog(4)">
-                <span class="dan-label">4</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-4-j">の</span><span
-                        class="mastery-half mastery-none" id="m-4-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-5" onclick="openModeDialog(5)">
-                <span class="dan-label">5</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-5-j">の</span><span
-                        class="mastery-half mastery-none" id="m-5-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-6" onclick="openModeDialog(6)">
-                <span class="dan-label">6</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-6-j">の</span><span
-                        class="mastery-half mastery-none" id="m-6-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-7" onclick="openModeDialog(7)">
-                <span class="dan-label">7</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-7-j">の</span><span
-                        class="mastery-half mastery-none" id="m-7-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-8" onclick="openModeDialog(8)">
-                <span class="dan-label">8</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-8-j">の</span><span
-                        class="mastery-half mastery-none" id="m-8-b">バ</span></div>
-            </button>
-            <button class="dan-btn" id="dan-9" onclick="openModeDialog(9)">
-                <span class="dan-label">9</span>
-                <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-9-j">の</span><span
-                        class="mastery-half mastery-none" id="m-9-b">バ</span></div>
-            </button>
+        <div class="dan-area">
+            <div class="level-legend">
+                <div class="level-legend-title">レベル</div>
+                <div class="level-dot mastery-none"></div>
+                <div class="level-dot mastery-started"></div>
+                <div class="level-dot mastery-review"></div>
+                <div class="level-dot mastery-growing"></div>
+                <div class="level-dot mastery-almost"></div>
+                <div class="level-dot mastery-complete"></div>
+            </div>
+            <div class="dan-grid">
+                <!-- 3〜9の段 -->
+                <button class="dan-btn" id="dan-3" onclick="openModeDialog(3)">
+                    <span class="dan-label">3</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-3-j">の</span><span
+                            class="mastery-half mastery-none" id="m-3-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-4" onclick="openModeDialog(4)">
+                    <span class="dan-label">4</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-4-j">の</span><span
+                            class="mastery-half mastery-none" id="m-4-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-5" onclick="openModeDialog(5)">
+                    <span class="dan-label">5</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-5-j">の</span><span
+                            class="mastery-half mastery-none" id="m-5-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-6" onclick="openModeDialog(6)">
+                    <span class="dan-label">6</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-6-j">の</span><span
+                            class="mastery-half mastery-none" id="m-6-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-7" onclick="openModeDialog(7)">
+                    <span class="dan-label">7</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-7-j">の</span><span
+                            class="mastery-half mastery-none" id="m-7-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-8" onclick="openModeDialog(8)">
+                    <span class="dan-label">8</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-8-j">の</span><span
+                            class="mastery-half mastery-none" id="m-8-b">バ</span></div>
+                </button>
+                <button class="dan-btn" id="dan-9" onclick="openModeDialog(9)">
+                    <span class="dan-label">9</span>
+                    <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-9-j">の</span><span
+                            class="mastery-half mastery-none" id="m-9-b">バ</span></div>
+                </button>
 
-            <button class="dan-btn zenbu" onclick="openModeDialog('all')">ぜんぶ (3〜9)</button>
+                <button class="dan-btn zenbu" onclick="openModeDialog('all')">ぜんぶ (3〜9)</button>
+            </div>
         </div>
     </div>
 
