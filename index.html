@@ -1046,6 +1046,7 @@
         let startTime = 0;
         let wrongCountForCurrentQuestion = 0; // 現在の問題での誤答回数
         let comboCount = 0;
+        let isProcessing = false; // 連打防止用フラグ
 
         // LocalStorageキー
         const STORAGE_KEY = 'kuku_master_data_v1';
@@ -1338,6 +1339,9 @@
             const pct = (currentIndex / questionList.length) * 100;
             document.getElementById('progress-fill').style.width = `${pct}%`;
 
+            // 連打防止解除
+            isProcessing = false;
+
             startTime = Date.now();
 
             // フィードバックリセット
@@ -1358,6 +1362,7 @@
         }
 
         function checkAnswer() {
+            if (isProcessing) return; // 処理中は無視
             if (currentInput === "") return;
 
             const q = questionList[currentIndex];
@@ -1365,6 +1370,10 @@
             const correctAns = q[0] * q[1];
 
             const isCorrect = (userAns === correctAns);
+
+            if (isCorrect) {
+                isProcessing = true; // 正解処理開始（連打防止）
+            }
 
             // 初回回答のみ正否を記録するか、毎回記録するか。
             // 「苦手分析」のためには「間違えた事実」を残したい。
@@ -1609,6 +1618,9 @@
 
         // --- わからないボタン ---
         function skipQuestion() {
+            if (isProcessing) return;
+            isProcessing = true;
+
             const q = questionList[currentIndex];
             const correctAns = q[0] * q[1];
 
