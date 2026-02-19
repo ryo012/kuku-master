@@ -1894,49 +1894,6 @@
             setTimeout(processQueue, 3000);
         });
 
-        // --- 進捗グラフ・集計ロジック ---
-        function getDanProgress(dan) {
-            // その段の習熟度(0-5)と、次のレベルまでの残り目安を計算
-            const levelStr = getMasteryLevel(dan, 'junban'); // 順番モードを基準にする
-
-            let levelScore = 0;
-            let levelLabel = "まだ";
-            let color = "#e0e0e0";
-
-            switch (levelStr) {
-                case 'none': levelScore = 0; levelLabel = "まだ"; color = "#e0e0e0"; break;
-                case 'started': levelScore = 1; levelLabel = "れんしゅう"; color = "#FF5252"; break;
-                case 'review': levelScore = 2; levelLabel = "おぼえはじめ"; color = "#FF9800"; break;
-                case 'growing': levelScore = 3; levelLabel = "いいかんじ"; color = "#FFC107"; break;
-                case 'almost': levelScore = 4; levelLabel = "もうすぐ"; color = "#8BC34A"; break;
-                case 'complete': levelScore = 5; levelLabel = "かんぺき"; color = "#2196F3"; break;
-            }
-
-            // 次のレベルまでの残り計算
-            // 復習リストにあるアイテムの中で、最も低いステージのものがボトルネック
-            const reviewData = loadReviewData();
-            const danItems = reviewData.filter(r => parseInt(r.question.split('x')[0]) === dan);
-
-            let message = "";
-            if (levelScore === 5) {
-                message = "マスターしました！";
-            } else if (levelScore === 0) {
-                message = "まずは1回やってみよう！";
-            } else {
-                if (danItems.length > 0) {
-                    const minStage = Math.min(...danItems.map(r => r.reviewStage));
-                    // 完了(5)になるには、stageが4を超える必要がある（intervals.length=5, index 0-4）
-                    // 現在のステージから、あと何回合格が必要か
-                    const remainingSteps = 5 - minStage;
-                    message = `あと${remainingSteps}回ごうかくでレベルアップ！`;
-                } else {
-                    // 復習リストにないのに完了じゃない場合（始めたばかりなど）
-                    message = "どんどんとこう！";
-                }
-            }
-
-            return { dan, levelScore, levelLabel, color, message };
-        }
 
         let myChart = null;
         function showProgressScreen() {
@@ -1964,7 +1921,10 @@
                         <span class="progress-dan">${d}のだん</span>
                         <span class="progress-badge" style="background:${prog.color}">${prog.levelLabel}</span>
                     </div>
-                    <div class="progress-status">${prog.message}</div>
+                    <div style="text-align:right;">
+                        <div class="progress-status" style="color:#2196F3; font-weight:bold;">${prog.subMessage}</div>
+                        <div class="progress-status" style="font-size:0.8em;">${prog.message}</div>
+                    </div>
                 `;
                 listContainer.appendChild(div);
             }
