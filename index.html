@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>九九マスター</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #4CAF50;
@@ -96,6 +97,56 @@
         .start-header {
             margin-bottom: 30px;
             text-align: center;
+        }
+
+        /* グラフ画面のスタイル */
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin: 20px 0;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-detail {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-dan {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .progress-status {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .progress-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 8px;
         }
 
         .start-header h1 {
@@ -740,6 +791,8 @@
         <div class="start-header">
             <h1>九九マスター</h1>
             <p id="session-subtitle">だん を えらんでね</p>
+            <button class="mode-btn" style="background: #9C27B0; margin-top: 10px; font-size: 1rem; padding: 10px 20px;"
+                onclick="showProgressScreen()">📊 じつりょくグラフ</button>
         </div>
 
         <!-- おすすめボタン -->
@@ -876,6 +929,21 @@
             </div>
             <button class="mode-btn" onclick="closeLevelDialog()">わかった！</button>
         </div>
+    </div>
+
+    <!-- グラフ画面 -->
+    <div id="screen-progress" class="screen">
+        <h1>あなたのじつりょく</h1>
+        <div class="chart-container">
+            <canvas id="masteryChart"></canvas>
+        </div>
+
+        <div class="progress-detail" id="progress-list">
+            <!-- JSで生成 -->
+        </div>
+
+        <button class="mode-btn" onclick="showScreen('screen-start')"
+            style="margin-top: 20px; background:#FF5252;">もどる</button>
     </div>
 
     <!-- 2. 学習画面 -->
@@ -1825,6 +1893,122 @@
             // 少し待ってから実行
             setTimeout(processQueue, 3000);
         });
+
+        // --- 進捗グラフ・集計ロジック ---
+        function getDanProgress(dan) {
+            // その段の習熟度(0-5)と、次のレベルまでの残り目安を計算
+            const levelStr = getMasteryLevel(dan, 'junban'); // 順番モードを基準にする
+
+            let levelScore = 0;
+            let levelLabel = "まだ";
+            let color = "#e0e0e0";
+
+            switch (levelStr) {
+                case 'none': levelScore = 0; levelLabel = "まだ"; color = "#e0e0e0"; break;
+                case 'started': levelScore = 1; levelLabel = "れんしゅう"; color = "#FF5252"; break;
+                case 'review': levelScore = 2; levelLabel = "おぼえはじめ"; color = "#FF9800"; break;
+                case 'growing': levelScore = 3; levelLabel = "いいかんじ"; color = "#FFC107"; break;
+                case 'almost': levelScore = 4; levelLabel = "もうすぐ"; color = "#8BC34A"; break;
+                case 'complete': levelScore = 5; levelLabel = "かんぺき"; color = "#2196F3"; break;
+            }
+
+            // 次のレベルまでの残り計算
+            // 復習リストにあるアイテムの中で、最も低いステージのものがボトルネック
+            const reviewData = loadReviewData();
+            const danItems = reviewData.filter(r => parseInt(r.question.split('x')[0]) === dan);
+
+            let message = "";
+            if (levelScore === 5) {
+                message = "マスターしました！";
+            } else if (levelScore === 0) {
+                message = "まずは1回やってみよう！";
+            } else {
+                if (danItems.length > 0) {
+                    const minStage = Math.min(...danItems.map(r => r.reviewStage));
+                    // 完了(5)になるには、stageが4を超える必要がある（intervals.length=5, index 0-4）
+                    // 現在のステージから、あと何回合格が必要か
+                    const remainingSteps = 5 - minStage;
+                    message = `あと${remainingSteps}回ごうかくでレベルアップ！`;
+                } else {
+                    // 復習リストにないのに完了じゃない場合（始めたばかりなど）
+                    message = "どんどんとこう！";
+                }
+            }
+
+            return { dan, levelScore, levelLabel, color, message };
+        }
+
+        let myChart = null;
+        function showProgressScreen() {
+            showScreen('screen-progress');
+
+            // データ集計
+            const labels = [];
+            const dataPoints = [];
+            const backgroundColors = [];
+
+            const listContainer = document.getElementById('progress-list');
+            listContainer.innerHTML = "";
+
+            for (let d = 2; d <= 9; d++) { // 2の段から9の段
+                const prog = getDanProgress(d);
+                labels.push(d + 'のだん');
+                dataPoints.push(prog.levelScore);
+                backgroundColors.push(prog.color);
+
+                // リスト表示
+                const div = document.createElement('div');
+                div.className = 'progress-item';
+                div.innerHTML = `
+                    <div>
+                        <span class="progress-dan">${d}のだん</span>
+                        <span class="progress-badge" style="background:${prog.color}">${prog.levelLabel}</span>
+                    </div>
+                    <div class="progress-status">${prog.message}</div>
+                `;
+                listContainer.appendChild(div);
+            }
+
+            // チャート描画
+            const ctx = document.getElementById('masteryChart').getContext('2d');
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'レベル',
+                        data: dataPoints,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function (value) {
+                                    const labels = ["まだ", "開始", "初期", "中期", "後期", "完了"];
+                                    return labels[value] || value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 
