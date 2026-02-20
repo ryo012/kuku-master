@@ -1387,6 +1387,11 @@
 
             currentIndex = 0;
             results = [];
+
+            // ブロック表示をクリア（新しいゲーム開始時）
+            const visualArea = document.getElementById('visual-area');
+            if (visualArea) visualArea.innerHTML = "";
+
             showScreen('screen-game');
             showQuestion();
         }
@@ -1426,9 +1431,6 @@
 
         // --- ゲームロジック ---
         function showQuestion() {
-            // ブロック表示をクリア
-            const visualArea = document.getElementById('visual-area');
-            if (visualArea) visualArea.innerHTML = "";
 
             const q = questionList[currentIndex];
             // 0.5秒遅延して表示（前のフィードバックが消えるのを待つなど）
@@ -1520,10 +1522,12 @@
                     wrongCount: wrongCountForCurrentQuestion
                 });
 
-                // ブロック可視化
-                showBlocks(q[0], q[1]);
+                // ブロック可視化（のぼりモードのみ）
+                if (currentMode === 'junban') {
+                    showBlocks(q[0], q[1]);
+                }
 
-                setTimeout(nextQuestion, 1200);
+                setTimeout(nextQuestion, 700);
             } else {
                 comboCount = 0;
                 document.getElementById('combo-badge').classList.remove('active');
@@ -1903,35 +1907,31 @@
             setTimeout(processQueue, 3000);
         });
 
-        // ブロック可視化関数（下から積み上がる）
+        // ブロック可視化関数（累積表示・下から積み上がる）
+        // 1回の正解で1行（dan個のブロック）を追加
         function showBlocks(dan, step) {
             const container = document.getElementById('visual-area');
             if (!container) return;
 
-            container.innerHTML = ""; // クリア
+            const row = document.createElement('div');
+            row.className = 'block-row';
 
-            // 行を作成（上から下の順でDOMに追加するが、アニメーションは下から上の順）
-            for (let r = 0; r < dan; r++) {
-                const row = document.createElement('div');
-                row.className = 'block-row';
+            for (let c = 0; c < dan; c++) {
+                const block = document.createElement('div');
+                block.className = 'math-block';
 
-                for (let c = 0; c < step; c++) {
-                    const block = document.createElement('div');
-                    block.className = 'math-block';
+                // 色設定: 段ごとに色相を変える
+                const hue = (dan * 40) % 360;
+                block.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
 
-                    // 色設定: 段ごとに色相を変える
-                    const hue = (dan * 40) % 360;
-                    block.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
+                // アニメーション遅延: 左から右へ
+                block.style.animationDelay = `${c * 40}ms`;
 
-                    // アニメーション遅延: 下から上へ積み上がる順序
-                    const rowFromBottom = (dan - 1) - r;
-                    const totalIndex = rowFromBottom * step + c;
-                    block.style.animationDelay = `${totalIndex * 30}ms`;
-
-                    row.appendChild(block);
-                }
-                container.appendChild(row);
+                row.appendChild(block);
             }
+
+            // 先頭に挿入（上に積み上がる）
+            container.insertBefore(row, container.firstChild);
         }
     </script>
 </body>
