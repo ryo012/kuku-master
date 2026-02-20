@@ -730,6 +730,50 @@
             font-size: 0.8rem;
             margin-top: 5px;
         }
+
+        :root {
+            /* ... existing vars ... */
+            --block-size: 20px;
+            --block-gap: 4px;
+        }
+
+        /* ... existing styles ... */
+
+        /* 可視化エリア */
+        .visual-area {
+            margin: 10px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 20px;
+            /* ちらつき防止 */
+            gap: var(--block-gap);
+        }
+
+        .block-row {
+            display: flex;
+            gap: var(--block-gap);
+        }
+
+        .math-block {
+            width: var(--block-size);
+            height: var(--block-size);
+            border-radius: 4px;
+            background-color: #ddd;
+            /* デフォルト */
+            opacity: 0;
+            transform: scale(0);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes popIn {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 
@@ -770,37 +814,44 @@
                 <button class="dan-btn" id="dan-3" onclick="openModeDialog(3)">
                     <span class="dan-label">3</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-3-j">の</span><span
-                            class="mastery-half mastery-none" id="m-3-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-3-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-4" onclick="openModeDialog(4)">
                     <span class="dan-label">4</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-4-j">の</span><span
-                            class="mastery-half mastery-none" id="m-4-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-4-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-5" onclick="openModeDialog(5)">
                     <span class="dan-label">5</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-5-j">の</span><span
-                            class="mastery-half mastery-none" id="m-5-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-5-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-6" onclick="openModeDialog(6)">
                     <span class="dan-label">6</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-6-j">の</span><span
-                            class="mastery-half mastery-none" id="m-6-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-6-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-7" onclick="openModeDialog(7)">
                     <span class="dan-label">7</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-7-j">の</span><span
-                            class="mastery-half mastery-none" id="m-7-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-7-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-8" onclick="openModeDialog(8)">
                     <span class="dan-label">8</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-8-j">の</span><span
-                            class="mastery-half mastery-none" id="m-8-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-8-b">バ</span>
+                    </div>
                 </button>
                 <button class="dan-btn" id="dan-9" onclick="openModeDialog(9)">
                     <span class="dan-label">9</span>
                     <div class="mastery-bar"><span class="mastery-half left mastery-none" id="m-9-j">の</span><span
-                            class="mastery-half mastery-none" id="m-9-b">バ</span></div>
+                            class="mastery-half mastery-none" id="m-9-b">バ</span>
+                    </div>
                 </button>
 
                 <button class="dan-btn zenbu" onclick="openModeDialog('all')">ぜんぶ (3〜9)</button>
@@ -893,6 +944,9 @@
             <div id="feedback" class="feedback">○</div>
         </div>
 
+        <!-- ブロック可視化エリア -->
+        <div id="visual-area" class="visual-area"></div>
+
         <div class="numpad-container">
             <button class="home-btn-side" onclick="confirmHome()">HOME</button>
             <div class="numpad">
@@ -920,7 +974,8 @@
             <div id="stamp" class="stamp">合格</div>
 
             <p style="font-size: 1.2rem;">せいかい: <span id="score-text"
-                    style="font-weight:bold; font-size:1.5rem;"></span></p>
+                    style="font-weight:bold; font-size:1.5rem;"></span>
+            </p>
 
             <div style="width:100%; text-align:left; font-weight:bold; margin-top:10px;">まちがえた もんだい</div>
             <ul id="wrong-list" class="score-list">
@@ -1356,6 +1411,10 @@
 
         // --- ゲームロジック ---
         function showQuestion() {
+            // ブロック表示をクリア
+            const visualArea = document.getElementById('visual-area');
+            if (visualArea) visualArea.innerHTML = "";
+
             const q = questionList[currentIndex];
             // 0.5秒遅延して表示（前のフィードバックが消えるのを待つなど）
 
@@ -1446,7 +1505,10 @@
                     wrongCount: wrongCountForCurrentQuestion
                 });
 
-                setTimeout(nextQuestion, 700);
+                // ブロック可視化
+                showBlocks(q[0], q[1]);
+
+                setTimeout(nextQuestion, 1200);
             } else {
                 comboCount = 0;
                 document.getElementById('combo-badge').classList.remove('active');
@@ -1825,6 +1887,37 @@
             // 少し待ってから実行
             setTimeout(processQueue, 3000);
         });
+
+        // ブロック可視化関数
+        function showBlocks(dan, step) {
+            const container = document.getElementById('visual-area');
+            if (!container) return;
+
+            container.innerHTML = ""; // クリア
+
+            // 段数行を作成
+            for (let r = 0; r < dan; r++) {
+                const row = document.createElement('div');
+                row.className = 'block-row';
+
+                // かける数だけブロックを作成
+                for (let c = 0; c < step; c++) {
+                    const block = document.createElement('div');
+                    block.className = 'math-block';
+
+                    // 色設定: 段ごとに色相を変える
+                    const hue = (dan * 40) % 360;
+                    block.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
+
+                    // アニメーション遅延: 全体を左上から右下へ流す
+                    const totalIndex = r * step + c;
+                    block.style.animationDelay = `${totalIndex * 30}ms`; // 30msごとに遅延
+
+                    row.appendChild(block);
+                }
+                container.appendChild(row);
+            }
+        }
     </script>
 </body>
 
