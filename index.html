@@ -739,16 +739,29 @@
 
         /* ... existing styles ... */
 
-        /* 可視化エリア */
+        /* ゲーム入力エリア（テンキー＋ブロック横並び） */
+        .game-input-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* 可視化エリア（テンキーの右側） */
         .visual-area {
-            margin: 10px auto;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 20px;
-            /* ちらつき防止 */
+            align-items: flex-start;
+            justify-content: flex-end;
+            min-width: 100px;
+            min-height: 100px;
             gap: var(--block-gap);
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.03);
         }
 
         .block-row {
@@ -944,25 +957,27 @@
             <div id="feedback" class="feedback">○</div>
         </div>
 
-        <!-- ブロック可視化エリア -->
-        <div id="visual-area" class="visual-area"></div>
-
-        <div class="numpad-container">
-            <button class="home-btn-side" onclick="confirmHome()">HOME</button>
-            <div class="numpad">
-                <button class="num-btn" onclick="inputNum(1)">1</button>
-                <button class="num-btn" onclick="inputNum(2)">2</button>
-                <button class="num-btn" onclick="inputNum(3)">3</button>
-                <button class="num-btn" onclick="inputNum(4)">4</button>
-                <button class="num-btn" onclick="inputNum(5)">5</button>
-                <button class="num-btn" onclick="inputNum(6)">6</button>
-                <button class="num-btn" onclick="inputNum(7)">7</button>
-                <button class="num-btn" onclick="inputNum(8)">8</button>
-                <button class="num-btn" onclick="inputNum(9)">9</button>
-                <button class="num-btn clear" onclick="clearInput()">C</button>
-                <button class="num-btn zero" onclick="inputNum(0)">0</button>
-                <button class="num-btn ok" onclick="checkAnswer()">OK</button>
+        <div class="game-input-row">
+            <div class="numpad-container">
+                <button class="home-btn-side" onclick="confirmHome()">HOME</button>
+                <div class="numpad">
+                    <button class="num-btn" onclick="inputNum(1)">1</button>
+                    <button class="num-btn" onclick="inputNum(2)">2</button>
+                    <button class="num-btn" onclick="inputNum(3)">3</button>
+                    <button class="num-btn" onclick="inputNum(4)">4</button>
+                    <button class="num-btn" onclick="inputNum(5)">5</button>
+                    <button class="num-btn" onclick="inputNum(6)">6</button>
+                    <button class="num-btn" onclick="inputNum(7)">7</button>
+                    <button class="num-btn" onclick="inputNum(8)">8</button>
+                    <button class="num-btn" onclick="inputNum(9)">9</button>
+                    <button class="num-btn clear" onclick="clearInput()">C</button>
+                    <button class="num-btn zero" onclick="inputNum(0)">0</button>
+                    <button class="num-btn ok" onclick="checkAnswer()">OK</button>
+                </div>
             </div>
+
+            <!-- ブロック可視化エリア（テンキー右側） -->
+            <div id="visual-area" class="visual-area"></div>
         </div>
         <button class="skip-btn" onclick="skipQuestion()">わからない</button>
     </div>
@@ -1888,19 +1903,18 @@
             setTimeout(processQueue, 3000);
         });
 
-        // ブロック可視化関数
+        // ブロック可視化関数（下から積み上がる）
         function showBlocks(dan, step) {
             const container = document.getElementById('visual-area');
             if (!container) return;
 
             container.innerHTML = ""; // クリア
 
-            // 段数行を作成
+            // 行を作成（上から下の順でDOMに追加するが、アニメーションは下から上の順）
             for (let r = 0; r < dan; r++) {
                 const row = document.createElement('div');
                 row.className = 'block-row';
 
-                // かける数だけブロックを作成
                 for (let c = 0; c < step; c++) {
                     const block = document.createElement('div');
                     block.className = 'math-block';
@@ -1909,9 +1923,10 @@
                     const hue = (dan * 40) % 360;
                     block.style.backgroundColor = `hsl(${hue}, 70%, 60%)`;
 
-                    // アニメーション遅延: 全体を左上から右下へ流す
-                    const totalIndex = r * step + c;
-                    block.style.animationDelay = `${totalIndex * 30}ms`; // 30msごとに遅延
+                    // アニメーション遅延: 下から上へ積み上がる順序
+                    const rowFromBottom = (dan - 1) - r;
+                    const totalIndex = rowFromBottom * step + c;
+                    block.style.animationDelay = `${totalIndex * 30}ms`;
 
                     row.appendChild(block);
                 }
